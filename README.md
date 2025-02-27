@@ -1,1 +1,1 @@
-[test](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FSandlerdev%2FmarketplaceARMTest%2Frefs%2Fheads%2Fmain%2FOneDrive_1_2-27-2025%2FmainTemplate.json%3Ftoken%3DGHSAT0AAAAAAC7E2GI6Y5NCHFT2EKH24AYWZ6AHPCA)
+[test](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FSandlerdev%2FmarketplaceARMTest%2Frefs%2Fheads%2Fmain%2FOneDrive_1_2-27-2025%2FmainTemplate.json)
