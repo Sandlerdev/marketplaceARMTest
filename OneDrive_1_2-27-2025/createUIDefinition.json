@@ -1,0 +1,370 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "basics": {
+        "subscription": {
+          "constraints": {
+            "validations": [
+              {
+                "permission": "Microsoft.Authorization/roleDefinitions/write",
+                "message": "Azure user deploying this Managed Application must have permission to assign roles."
+              }
+            ]
+          },
+          "resourceProviders": [
+            "Microsoft.Resources",
+            "Microsoft.OperationalInsights",
+            "Microsoft.OperationsManagement",
+            "Microsoft.ContainerService",
+            "Microsoft.Compute",
+            "Microsoft.Network",
+            "Microsoft.Storage"
+          ]
+        },
+        "resourceGroup": {
+          "allowExisting": true
+        },
+        "location": {
+          "visible": true,
+          "resourceTypes": [
+            "Microsoft.ContainerService/managedClusters"
+          ]
+        }
+      }
+    },
+    "basics": [
+      {
+        "name": "aksName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "AKS Cluster Name",
+        "defaultValue": "",
+        "toolTip": "Enter the name of the AKS cluster. Use only allowed characters",
+        "constraints": {
+          "required": true,
+          "regex": "^[a-z0-9_\\-]{3,63}$",
+          "validationMessage": "Only alphanumeric characters, underscores, and hyphens are allowed. The name must be 3-63 characters long"
+        },
+        "visible": true
+      },
+      {
+        "name": "nodeSize",
+        "type": "Microsoft.Compute.SizeSelector",
+        "label": "Size",
+        "toolTip": "Select the size of virtual machines to use for nodes in the cluster",
+        "recommendedSizes": [
+          "Standard_D8s_v5"
+        ],
+        "options": {
+          "hideDiskTypeFilter": false
+        },
+        "osPlatform": "Linux",
+        "imageReference": {
+          "publisher": "Canonical",
+          "offer": "UbuntuServer",
+          "sku": "16.04-LTS"
+        },
+        "count": 1,
+        "visible": true
+      },
+      {
+        "name": "nodeCount",
+        "type": "Microsoft.Common.Slider",
+        "min": 3,
+        "max": 10,
+        "label": "Node Count",
+        "subLabel": "Nodes",
+        "defaultValue": 3,
+        "showStepMarkers": true,
+        "toolTip": "Select the number of nodes to provision in the cluster",
+        "constraints": {
+          "required": true
+        },
+        "visible": true
+      }
+    ],
+    "steps": [
+      {
+        "name": "ExtensionConfiguration",
+        "label": "Platform Configurations",
+        "elements": [
+          {
+            "name": "platform_details",
+            "type": "Microsoft.Common.Section",
+            "label": "Platform Details",
+            "elements": [
+              {
+                "name": "domain_url",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Domain URL",
+                "defaultValue": "",
+                "toolTip": "Enter the domain URL (e.g., example.com)",
+                "constraints": {
+                  "required": true,
+                  "regex": "^(https?:\\/\\/)?([\\da-z.-]+)\\.([a-z.]{2,6})([\\/\\w .-]*)*\\/?$",
+                  "validationMessage": "Please enter a valid domain URL"
+                }
+              },
+              {
+                "name": "userDetailsControl",
+                "type": "Microsoft.Solutions.ArmApiControl",
+                "request": {
+                  "method": "GET",
+                  "path": "https://graph.microsoft.com/v1.0/me",
+                  "headers": {
+                    "Authorization": "[concat('Bearer ', parameters('accessToken'))]"
+                  }
+                }
+              },
+              {
+                "name": "admin_email",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Admin Email Address",
+                "toolTip": "Enter the admin email address (e.g., example@domain.com)",
+                "defaultValue": "[basics('userDetailsControl').value.mail]",
+                "constraints": {
+                  "required": true,
+                  "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+                  "validationMessage": "Please enter a valid email address"
+                }
+              },
+              {
+                "name": "admin_password",
+                "type": "Microsoft.Common.PasswordBox",
+                "label": {
+                  "password": "Admin Password",
+                  "confirmPassword": "Confirm password"
+                },
+                "toolTip": "Enter the admin password. Only alphanumeric characters are allowed, and the value must be 8-30 characters long",
+                "constraints": {
+                  "required": true,
+                  "regex": "^[a-z0-9A-Z]{6,30}$",
+                  "validationMessage": "Only alphanumeric characters are allowed, and the value must be 6-30 characters long"
+                },
+                "options": {
+                  "hideConfirmation": false
+                },
+                "visible": true
+              }
+            ]
+          },
+          {
+            "name": "smtp_details",
+            "type": "Microsoft.Common.Section",
+            "label": "SMTP Details",
+            "elements": [
+              {
+                "name": "smtp_host",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Host",
+                "defaultValue": "",
+                "toolTip": "Enter the hostname or IP address of the SMTP server",
+                "constraints": {
+                  "required": true,
+                  "regex": "^.*$",
+                  "validationMessage": "Please enter a valid hostname or IP address"
+                }
+              },
+              {
+                "name": "smtp_port",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Port",
+                "defaultValue": "",
+                "toolTip": "Enter the port number used for SMTP communication",
+                "constraints": {
+                  "required": true,
+                  "regex": "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$",
+                  "validationMessage": "Please enter a valid port number (0-65535)"
+                }
+              },
+              {
+                "name": "smtp_user",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Username",
+                "defaultValue": "",
+                "toolTip": "Enter the username for authenticating with the SMTP server",
+                "constraints": {
+                  "required": true,
+                  "regex": "^.*$",
+                  "validationMessage": "Please enter a valid username"
+                }
+              },
+              {
+                "name": "smpt_host_password",
+                "type": "Microsoft.Common.PasswordBox",
+                "label": "Password",
+                "toolTip": "Enter the password for authenticating with the SMTP server",
+                "constraints": {
+                  "required": true,
+                  "validationMessage": "Please enter a valid password"
+                },
+                "options": {
+                  "hideConfirmation": false
+                },
+                "visible": true
+              },
+              {
+                "name": "smtp_host_email",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Sender Email",
+                "defaultValue": "",
+                "toolTip": "Enter the email address used as the sender for outgoing emails",
+                "constraints": {
+                  "required": true,
+                  "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+                  "validationMessage": "Please enter a valid email address"
+                }
+              }
+            ]
+          },
+          {
+            "name": "housekeeping_utility_details",
+            "type": "Microsoft.Common.Section",
+            "label": "Housekeeping Utility Details",
+            "elements": [
+              {
+                "name": "storageSelector",
+                "type": "Microsoft.Solutions.ResourceSelector",
+				"toolTip": "Select the Azure Blob Storage Account",
+                "label": "Select storage account",
+                "resourceType": "Microsoft.Storage/storageAccounts",
+                "options": {
+                  "filter": {
+                    "subscription": "onBasics",
+                    "location": "onBasics"
+                  }
+                 },
+                "constraints": {
+                  "regex": "^.*$",
+                  "validationMessage": "Please enter a valid string"
+                },
+                "visible": true
+               },
+               {
+                "name": "blob_container_name",
+                "type": "Microsoft.Common.TextBox",
+                "toolTip": "Update with Azure Blob Storage Container Name",
+                "hideExisting": false,
+                "label": "Blob Container Name",
+                "constraints": {
+                  "regex": "^.*$",
+                  "validationMessage": "Please enter a valid string"
+                },
+                "visible": true
+              },
+              {
+                "name": "blob_sas_token",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Container SAS Token",
+                "defaultValue": "",
+                "toolTip": "Update with Azure Blob Storage SAS Token",
+                "constraints": {
+                  "required": true,
+                  "regex": "^.*$",
+                  "validationMessage": "Please Enter a Valid String"
+                },
+                "visible": true
+              },
+              {
+                "name": "housekeeping_reciver_email",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Receiver Email Address",
+                "defaultValue": "[steps('ExtensionConfiguration').platform_details.admin_email]",
+                "toolTip": "Update email id's as comma separated that needs to be configured to receive alerts",
+                "constraints": {
+                  "required": true,
+                  "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+                  "validationMessage": "Enter a valid email address (example@domain.com)"
+                },
+                "visible": true
+              }
+            ]
+          },
+          {
+            "name": "iot_details",
+            "type": "Microsoft.Common.Section",
+            "label": "IoT-Hub Details",
+            "elements": [
+              {
+                "name": "azure_iot_hub_host",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Azure IOT Hub Connection String",
+                "defaultValue": "Endpoint=sb://<iothub-name>.servicebus.windows.net/;SharedAccessKeyName=iothubowner;SharedAccessKey=<your-key>;EntityPath=azr-ioth-device-001",
+                "toolTip": "Update the IoT Hub connection string",
+                "constraints": {
+                  "required": true,
+                  "regex": "^HostName=[a-zA-Z0-9\\-]+\\.azure-devices\\.net;SharedAccessKeyName=[a-zA-Z0-9]+;SharedAccessKey=[a-zA-Z0-9\\/\\+=]+$",
+                  "validationMessage": "Please Enter a Valid String."
+                },
+                "visible": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "tags",
+        "label": "Tags",
+        "elements": [
+          {
+            "name": "tagsByResource",
+            "type": "Microsoft.Common.TagsByResource",
+            "label": "Tags",
+            "toolTip": "Add tags to categorize and manage your resources effectively.",
+            "constraints": {
+              "required": false
+            },
+            "options": {
+              "allowEmpty": true
+            },
+            "resources": [
+              "Microsoft.ContainerService/managedClusters",
+              "Microsoft.Network/routeTables",
+              "Microsoft.Network/publicIPAddresses",
+              "Microsoft.Network/loadBalancers",
+              "Microsoft.Network/networkSecurityGroups",
+              "Microsoft.Network/virtualNetworks",
+              "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "Microsoft.Network/privateDnsZones",
+              "Microsoft.Network/privateEndpoints",
+              "Microsoft.Storage/storageAccounts",
+              "Microsoft.Storage/storageAccounts/blobServices",
+              "Microsoft.Storage/storageAccounts/fileServices",
+              "Microsoft.Storage/storageAccounts/queueServices",
+              "Microsoft.Storage/storageAccounts/tableServices"
+            ]
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "aksName": "[basics('aksName')]",
+      "nodeSize": "[basics('nodeSize')]",
+      "nodeCount": "[basics('nodeCount')]",
+      "domain_url": "[steps('ExtensionConfiguration').platform_details.domain_url]",
+      "admin_password": "[steps('ExtensionConfiguration').platform_details.admin_password]",
+      "admin_email": "[steps('ExtensionConfiguration').platform_details.admin_email]",
+      "smtp_host": "[steps('ExtensionConfiguration').smtp_details.smtp_host]",
+      "smtp_port": "[steps('ExtensionConfiguration').smtp_details.smtp_port]",
+      "smtp_user": "[steps('ExtensionConfiguration').smtp_details.smtp_user]",
+      "smtp_host_email": "[steps('ExtensionConfiguration').smtp_details.smtp_host_email]",
+      "smtp_host_password": "[steps('ExtensionConfiguration').smtp_details.smpt_host_password]",
+      "housekeeping_reciver_email": "[steps('ExtensionConfiguration').housekeeping_utility_details.housekeeping_reciver_email]",
+      "storageSelector": "[steps('ExtensionConfiguration').housekeeping_utility_details.storageSelector]",
+      "resourceGroup": "[steps('ExtensionConfiguration').housekeeping_utility_details.storageSelector.resourceGroup]",
+      "newOrExisting": "[steps('ExtensionConfiguration').housekeeping_utility_details.storageSelector.newOrExisting]",
+      "blob_container_name": "[steps('ExtensionConfiguration').housekeeping_utility_details.blob_container_name]",
+      "blob_sas_token": "[steps('ExtensionConfiguration').housekeeping_utility_details.blob_sas_token]",
+      "azure_iot_hub_host": "[steps('ExtensionConfiguration').iot_details.azure_iot_hub_host]",
+      "tags": {
+        "ApplicationName": "FactoryTalk DataMosaix - Private Cloud",
+        "ApplicationVersion": "v8.0.0",
+        "Environment": "Production",
+        "Owner": "[steps('ExtensionConfiguration').platform_details.admin_email]"
+      }
+    }
+  }
+}

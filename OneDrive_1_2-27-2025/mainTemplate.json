@@ -1,0 +1,236 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "location": {
+          "type": "string",
+          "defaultValue": "[resourceGroup().location]",
+          "metadata": {
+              "description": "Location for all resources."
+          }
+    },
+      "aksName":  {   
+          "type": "string",
+          "metadata": {
+              "description": "AKS Cluster Name"
+          }
+      },
+      "nodeSize": {
+          "type": "string",
+          "defaultValue": "Standard_D8s_v5",
+          "metadata": {
+              "description": "Node Size"
+          }
+      },
+      "nodeCount": {
+          "type": "int",
+          "defaultValue": 3,
+          "metadata": {
+              "description": "Node Count"
+          }
+      },
+      "domain_url": {
+          "type": "string",
+          "defaultValue": "url",
+          "metadata": {
+              "description": "Extension Name"
+          }
+      },
+      "admin_password": {
+          "type": "secureString",
+          "metadata": {
+              "description": "Extension Title"
+          }
+      },
+      "admin_email": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "Extension Email"
+          }
+      },
+      "smtp_host": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "smtp_host"
+          }
+      },
+      "smtp_port": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "smtp_port"
+          }
+      },
+      "smtp_user": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "smtp_user"
+          }
+      },
+      "smtp_host_email": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "smtp_host_email"
+          }
+      },
+      "smtp_host_password": {
+          "type": "secureString",
+          "metadata": {
+              "description": "smtp_host_password"
+          }
+      },
+      "housekeeping_reciver_email": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "housekeeping_reciver_email"
+          }
+      },
+      "storageSelector": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "Update with Azure Blob Storage Account Name"
+          }
+      },
+      "blob_container_name": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "Update with Azure Blob Storage Container Name"
+          }
+      },
+      "blob_sas_token": {
+          "type": "string",
+          "defaultValue": "string",
+          "metadata": {
+              "description": "Update with Azure Blob Storage SAS Token"
+          }
+      },
+      "azure_iot_hub_host": {
+          "type": "string",
+          "defaultValue": "Endpoint=sb://<iothub-name>.servicebus.windows.net/;SharedAccessKeyName=iothubowner;SharedAccessKey=<your-key>;EntityPath=azr-ioth-device-001",
+          "metadata": {
+              "description": "Update the IOT HUB connection string",
+              "constraints": {
+                  "required": true
+              }
+          }
+      },
+      "resourceGroup": {
+          "type": "string",
+		  "defaultValue": "string",
+          "metadata": {
+              "description": "Resource group of the storage account"
+          }
+      },
+      "tags": {
+        "type": "string",
+        "defaultValue": "string",
+        "metadata": {
+            "description": "Update with Azure Blob Storage SAS Token"
+        }
+      }
+  },
+  "variables": {
+      "plan-name": "basic-plan",
+      "plan-publisher": "example-publisher",
+      "plan-offerID": "offer-12345",
+      "releaseTrain": "stable",
+      "clusterExtensionTypeName": "custom-extension"
+  },
+  "resources": [
+      {
+          "type": "Microsoft.ContainerService/managedClusters",
+          "apiVersion": "2024-09-02-preview",
+          "name": "[parameters('aksName')]",
+          "location": "[parameters('location')]",
+          "properties": {
+              "dnsPrefix": "[parameters('aksName')]",
+              "agentPoolProfiles": [
+                  {
+                      "name": "agentpool",
+                      "count": "[parameters('nodeCount')]",
+                      "vmSize": "[parameters('nodeSize')]",
+                      "osType": "Linux",
+                      "mode": "System"
+                  }
+              ],
+              "servicePrincipalProfile": {
+                  "clientId": "[parameters('servicePrincipalClientId')]",
+                  "secret": "[parameters('servicePrincipalClientSecret')]"
+              },
+              "kubernetesVersion": "1.21.2",
+              "enableRBAC": true,
+              "networkProfile": {
+                  "networkPlugin": "azure",
+                  "serviceCidr": "10.0.0.0/16",
+                  "dnsServiceIp": "10.0.0.10",
+                  "dockerBridgeCidr": "172.17.0.1/16"
+              }
+          }
+      },
+      {
+          "type": "Microsoft.KubernetesConfiguration/extensions",
+          "apiVersion": "2023-05-01",
+          "name": "[concat(parameters('aksName'), '-cluster')]",
+          "location": "[parameters('location')]",
+          "dependsOn": [
+              "[parameters('aksName')]"
+          ],
+          "plan": {
+              "name": "[variables('plan-name')]",
+              "product": "[variables('plan-offerID')]",
+              "publisher": "[variables('plan-publisher')]"
+          },
+          "properties": {
+              "autoUpgradeMinorVersion": true,
+              "configurationSettings": {
+                  "Platform URL": "[parameters('domain_url')]",
+                  "Admin EmailID": "[parameters('admin_email')]",
+                  "Admin Password": "[parameters('admin_password')]",
+                  "SMTP Host": "[parameters('smtp_host')]",
+                  "SMTP Port": "[parameters('smtp_port')]",
+                  "SMTP User": "[parameters('smtp_user')]",
+                  "SMTP Host Password": "[parameters('smtp_host_password')]",
+                  "SMTP Host Email": "[parameters('smtp_host_email')]",
+                  "Storage Account Name": "[parameters('storageSelector')]",
+                  "Blob Container Name": "[parameters('blob_container_name')]",
+                  "Blob SAS Token": "[parameters('blob_sas_token')]",
+                  "Housekeeping Email": "[parameters('housekeeping_reciver_email')]",
+                  "Azure IoT Hub Host": "[parameters('azure_iot_hub_host')]",
+                  "tags": "[parameters('tags')]"
+              },
+              "extensionType": "[variables('clusterExtensionTypeName')]",
+              "releaseTrain": "[variables('releaseTrain')]"
+          },
+          "scope": "[concat('Microsoft.ContainerService/managedClusters/', parameters('aksName'))]"
+      }
+  ],
+  "outputs": {
+      "aksName": {
+          "type": "string",
+          "value": "[parameters('aksName')]"
+      },
+      "aksFqdn": {
+          "type": "string",
+          "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters/', parameters('aksName'))).fqdn]"
+      },
+      "managedResourceGroup": {
+          "type": "string",
+          "value": "[resourceGroup().id]"
+      },
+      "subscription": {
+          "type": "object",
+          "value": "[subscription()]"
+      },
+      "resourceGroup": {
+          "type": "string",
+          "value": "[parameters('resourceGroup')]"
+      }
+  }
+}
